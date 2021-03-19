@@ -91,6 +91,7 @@ contract Strategy is BaseStrategy {
 
         want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
+        path = getTokenOutPath(reward, want);
     }
 
     function cloneStrategy(

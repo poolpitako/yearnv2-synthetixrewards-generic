@@ -5,48 +5,30 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-interface ChefLike {
-    function deposit(uint256 _pid, uint256 _amount) external;
-
-    function withdraw(uint256 _pid, uint256 _amount) external;
-
-    function emergencyWithdraw(uint256 _pid) external;
-
-    function poolInfo(uint256 _pid)
-        external
-        view
-        returns (
-            address,
-            uint256,
-            uint256,
-            uint256
-        );
-
-    function userInfo(uint256 _pid, address user)
-        external
-        view
-        returns (uint256, uint256);
+interface SynthetixRewards {
+    function stake(uint256 amount) external;
+    function exit() external;
+    function withdraw(uint256 amount) external;
+    function getReward() external;
+    function earned(address account) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function stakeToken() external view returns (address);
+    function rewardToken() external view returns (address);
 }
 
 // These are the core Yearn libraries
 import "@yearnvaults/contracts/BaseStrategy.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import {SafeERC20, SafeMath, IERC20, Address} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./interfaces/UniswapInterfaces/IUniswapV2Router02.sol";
-
-// Import interfaces for many popular DeFi projects, or add your own!
-//import "../interfaces/<protocol>/<Interface>.sol";
 
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public masterchef;
+    address public staker;
     address public reward;
 
     address private constant uniswapRouter =
@@ -58,7 +40,6 @@ contract Strategy is BaseStrategy {
 
     address public router;
 
-    uint256 public pid;
 
     address[] public path;
 
@@ -66,12 +47,10 @@ contract Strategy is BaseStrategy {
 
     constructor(
         address _vault,
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
+        address _staker,
+        address _router
     ) public BaseStrategy(_vault) {
-        _initializeStrat(_masterchef, _reward, _router, _pid);
+        _initializeStrat(_staker, _router);
     }
 
     function initialize(
@@ -79,21 +58,17 @@ contract Strategy is BaseStrategy {
         address _strategist,
         address _rewards,
         address _keeper,
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
+        address _staker,
+        address _router
     ) external {
         //note: initialise can only be called once. in _initialize in BaseStrategy we have: require(address(want) == address(0), "Strategy already initialized");
         _initialize(_vault, _strategist, _rewards, _keeper);
-        _initializeStrat(_masterchef, _reward, _router, _pid);
+        _initializeStrat(_staker, _router);
     }
 
     function _initializeStrat(
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
+        address _staker,
+        address _router
     ) internal {
         require(
             router == address(0),
@@ -108,35 +83,28 @@ contract Strategy is BaseStrategy {
         maxReportDelay = 6300;
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
-        masterchef = _masterchef;
-        reward = _reward;
+        staker = _staker;
+        reward = SynthetixRewards(staker).rewardToken();
         router = _router;
-        pid = _pid;
 
-        (address poolToken, , , ) = ChefLike(masterchef).poolInfo(pid);
+        require(address(want) == SynthetixRewards(staker).stakeToken(), "wrong want");
 
-        require(poolToken == address(want), "wrong pid");
-
-        want.safeApprove(_masterchef, uint256(-1));
+        want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
     }
 
     function cloneStrategy(
         address _vault,
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
+        address _staker,
+        address _router
     ) external returns (address newStrategy) {
         newStrategy = this.cloneStrategy(
             _vault,
             msg.sender,
             msg.sender,
             msg.sender,
-            _masterchef,
-            _reward,
-            _router,
-            _pid
+            _staker,
+            _router
         );
     }
 
@@ -145,10 +113,8 @@ contract Strategy is BaseStrategy {
         address _strategist,
         address _rewards,
         address _keeper,
-        address _masterchef,
-        address _reward,
-        address _router,
-        uint256 _pid
+        address _staker,
+        address _router
     ) external returns (address newStrategy) {
         // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
         bytes20 addressBytes = bytes20(address(this));
@@ -173,10 +139,8 @@ contract Strategy is BaseStrategy {
             _strategist,
             _rewards,
             _keeper,
-            _masterchef,
-            _reward,
-            _router,
-            _pid
+            _staker,
+            _router
         );
 
         emit Cloned(newStrategy);
@@ -208,13 +172,19 @@ contract Strategy is BaseStrategy {
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
-        return "StrategyMasterchefGeneric";
+        return "StrategySynthetixRewardsGeneric";
+    }
+
+    function pendingReward() public view returns (uint256) {
+        return SynthetixRewards(staker).earned(address(this));
+    }
+
+    function balanceOfStake() public view returns (uint256) {
+        return SynthetixRewards(staker).balanceOf(address(this));
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        (uint256 deposited, ) =
-            ChefLike(masterchef).userInfo(pid, address(this));
-        return want.balanceOf(address(this)).add(deposited);
+        return want.balanceOf(address(this)).add(balanceOfStake());
     }
 
     function prepareReturn(uint256 _debtOutstanding)
@@ -226,7 +196,7 @@ contract Strategy is BaseStrategy {
             uint256 _debtPayment
         )
     {
-        ChefLike(masterchef).deposit(pid, 0);
+        SynthetixRewards(staker).getReward();
 
         _sell();
 
@@ -271,7 +241,7 @@ contract Strategy is BaseStrategy {
         }
 
         uint256 wantBalance = want.balanceOf(address(this));
-        ChefLike(masterchef).deposit(pid, wantBalance);
+        SynthetixRewards(staker).stake(wantBalance);
     }
 
     function liquidatePosition(uint256 _amountNeeded)
@@ -283,13 +253,12 @@ contract Strategy is BaseStrategy {
         if (_amountNeeded > totalAssets) {
             uint256 amountToFree = _amountNeeded.sub(totalAssets);
 
-            (uint256 deposited, ) =
-                ChefLike(masterchef).userInfo(pid, address(this));
+            uint256 deposited = balanceOfStake();
             if (deposited < amountToFree) {
                 amountToFree = deposited;
             }
             if (deposited > 0) {
-                ChefLike(masterchef).withdraw(pid, amountToFree);
+                SynthetixRewards(staker).withdraw(amountToFree);
             }
 
             _liquidatedAmount = want.balanceOf(address(this));
@@ -305,36 +274,33 @@ contract Strategy is BaseStrategy {
         _sell();
     }
 
-    function emergencyWithdrawal(uint256 _pid) external  onlyGovernance{
-        ChefLike(masterchef).emergencyWithdraw(_pid);
+    function emergencyWithdrawal(uint256 _pid) external  onlyGovernance {
+        SynthetixRewards(staker).exit();
+    }
+
+    function getTokenOutPath(address _token_in,address _token_out ) internal view returns (address [] memory _path) {
+        bool is_weth = _token_in == address(weth) || _token_out == address(weth);
+        _path = new address[](is_weth ? 2 : 3);
+        _path[0] = _token_in;
+        if (is_weth) {
+            _path[1] = _token_out;
+        } else {
+            _path[1] = address(weth);
+            _path[2] = _token_out;
+        }
     }
 
     //sell all function
     function _sell() internal {
-
         uint256 rewardBal = IERC20(reward).balanceOf(address(this));
         if( rewardBal == 0){
             return;
         }
-
-
         if(path.length == 0){
-            address[] memory tpath;
-            if(address(want) != weth){
-                tpath = new address[](3);
-                tpath[2] = address(want);
-            }else{
-                tpath = new address[](2);
-            }
-            
-            tpath[0] = address(reward);
-            tpath[1] = weth;
-
-            IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), tpath, address(this), now);
+            IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), getTokenOutPath(reward,want), address(this), now);
         }else{
             IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), path, address(this), now);
-        }  
-
+        }
     }
 
     function protectedTokens()

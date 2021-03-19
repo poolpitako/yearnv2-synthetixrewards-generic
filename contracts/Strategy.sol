@@ -156,10 +156,11 @@ contract Strategy is BaseStrategy {
             "incorrect router"
         );
 
+        //Revoke approval to old router
+        IERC20(reward).safeApprove(router,0);
         router = _router;
-        IERC20(reward).safeApprove(router, 0);
+        //Approve on new router
         IERC20(reward).safeApprove(router, uint256(-1));
-
     }
 
     function setPath(address[] calldata _path)

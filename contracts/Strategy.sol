@@ -37,6 +37,17 @@ contract Strategy is BaseStrategy {
 
     event Cloned(address indexed clone);
 
+    modifier onlyGuardians() {
+        require(
+                msg.sender == strategist ||
+                msg.sender == governance() ||
+                msg.sender == vault.guardian() ||
+                msg.sender == vault.management(),
+            "!authorized"
+        );
+        _;
+    }
+
     constructor(
         address _vault,
         address _staker,
@@ -211,7 +222,9 @@ contract Strategy is BaseStrategy {
             uint256 _debtPayment
         )
     {
-        ISynthetixRewards(staker).getReward();
+        //This allows harvest to not fail if staker contract doesnt have rewards to give
+        if(!emergencyExit)
+            ISynthetixRewards(staker).getReward();
 
         _sell();
 
@@ -295,11 +308,11 @@ contract Strategy is BaseStrategy {
     }
 
     //Use this to toggle emergencywithdraw from withdrawing via exit
-    function toggleExit() external onlyGovernance {
+    function toggleExit() external onlyGuardians {
         useExitForEmergency = !useExitForEmergency;
     }
 
-    function emergencyWithdrawal() external  onlyGovernance {
+    function emergencyWithdrawal() external  onlyGuardians {
         if(useExitForEmergency)
             ISynthetixRewards(staker).exit();
         else

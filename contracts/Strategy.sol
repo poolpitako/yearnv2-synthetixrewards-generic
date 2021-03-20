@@ -307,6 +307,7 @@ contract Strategy is BaseStrategy {
         _sell();
     }
 
+    //Use this to toggle emergencywithdraw from withdrawing via exit
     function toggleExit() external onlyGovernance {
         useExitForEmergency = !useExitForEmergency;
     }

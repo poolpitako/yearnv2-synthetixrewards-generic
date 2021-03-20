@@ -33,7 +33,7 @@ contract Strategy is BaseStrategy {
 
     address[] internal path;
 
-    bool public useExitForEmergency = true;
+    bool public useExitForEmergency;
 
     event Cloned(address indexed clone);
 
@@ -91,6 +91,8 @@ contract Strategy is BaseStrategy {
         want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
         path = getTokenOutPath(reward, address(want));
+        //By default emergencyexit withdraw will use exit,toggle this to false to not use exit incase staking pool doesnt have sufficient rewards
+        useExitForEmergency = true;
     }
 
     function cloneStrategy(

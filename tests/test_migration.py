@@ -18,7 +18,7 @@ def test_migration(token, vault, chain, strategy, Strategy, strategist, whale, g
     vault.deposit(amount, {"from": whale})
     strategy.harvest()
     
-    tx = strategy.cloneStrategy(vault, yfibank, router)
+    tx = strategy.cloneStrategy(vault, yfibank, router, token, bank)
     
 
     # migrate to a new strategy

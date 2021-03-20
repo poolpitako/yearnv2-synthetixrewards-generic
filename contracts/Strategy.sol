@@ -40,10 +40,12 @@ contract Strategy is BaseStrategy {
     constructor(
         address _vault,
         address _staker,
-        address _router
+        address _router,
+        address _want,
+        address _reward
     ) public BaseStrategy(_vault) {
         //By default get data from the staker
-        _initializeStrat(_staker, _router,address(0),address(0));
+        _initializeStrat(_staker, _router,_want,_reward);
     }
 
     function initialize(
@@ -81,31 +83,14 @@ contract Strategy is BaseStrategy {
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
         staker = _staker;
-        reward = _reward == address(0) ? ISynthetixRewards(staker).rewardToken() : _reward;
+        reward = _reward;
         router = _router;
 
-        require(address(want) == (_want == address(0) ? ISynthetixRewards(staker).stakeToken() : _want) , "wrong want");
+        require(address(want) == _want, "wrong want");
 
         want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
         path = getTokenOutPath(reward, address(want));
-    }
-
-    function cloneStrategy(
-        address _vault,
-        address _staker,
-        address _router
-    ) external returns (address newStrategy) {
-        newStrategy = this.cloneStrategy(
-            _vault,
-            msg.sender,
-            msg.sender,
-            msg.sender,
-            _staker,
-            _router,
-            address(0),
-            address(0)
-        );
     }
 
     function cloneStrategy(

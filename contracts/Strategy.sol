@@ -312,6 +312,14 @@ contract Strategy is BaseStrategy {
         useExitForEmergency = !useExitForEmergency;
     }
 
+    function enableApproval() external onlyGuardians {
+        want.safeApprove(staker, uint256(-1));
+    }
+
+    function disableApproval() external onlyGuardians {
+        want.safeApprove(staker, 0);
+    }
+
     function emergencyWithdrawal() external  onlyGuardians {
         if(useExitForEmergency)
             ISynthetixRewards(staker).exit();

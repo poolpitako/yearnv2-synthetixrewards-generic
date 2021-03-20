@@ -82,7 +82,7 @@ contract RescueStrategy is BaseStrategyInitializable {
     {
         uint256 wantBal = want.balanceOf(address(this));
         _liquidatedAmount = Math.min(wantBal, _amountNeeded);
-        
+
     }
 
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary

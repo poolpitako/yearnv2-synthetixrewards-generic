@@ -5,16 +5,6 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-interface SynthetixRewards {
-    function stake(uint256 amount) external;
-    function exit() external;
-    function withdraw(uint256 amount) external;
-    function getReward() external;
-    function earned(address account) external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-    function stakeToken() external view returns (address);
-    function rewardToken() external view returns (address);
-}
 
 // These are the core Yearn libraries
 import "@yearnvaults/contracts/BaseStrategy.sol";
@@ -22,6 +12,7 @@ import {SafeERC20, SafeMath, IERC20, Address} from "@openzeppelin/contracts/toke
 import "@openzeppelin/contracts/math/Math.sol";
 
 import "./interfaces/UniswapInterfaces/IUniswapV2Router02.sol";
+import "./interfaces/ISynthetixRewards.sol";
 
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
@@ -40,8 +31,9 @@ contract Strategy is BaseStrategy {
 
     address public router;
 
+    address[] internal path;
 
-    address[] public path;
+    bool public useExitForEmergency = true;
 
     event Cloned(address indexed clone);
 
@@ -89,10 +81,10 @@ contract Strategy is BaseStrategy {
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
         staker = _staker;
-        reward = _reward == address(0) ? SynthetixRewards(staker).rewardToken() : _reward;
+        reward = _reward == address(0) ? ISynthetixRewards(staker).rewardToken() : _reward;
         router = _router;
 
-        require(address(want) == (_want == address(0) ? SynthetixRewards(staker).stakeToken() : _want) , "wrong want");
+        require(address(want) == (_want == address(0) ? ISynthetixRewards(staker).stakeToken() : _want) , "wrong want");
 
         want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
@@ -207,12 +199,16 @@ contract Strategy is BaseStrategy {
         return "StrategySynthetixRewardsGeneric";
     }
 
+    function getSwapPath() external view returns (address[] memory) {
+        return path;
+    }
+
     function pendingReward() public view returns (uint256) {
-        return SynthetixRewards(staker).earned(address(this));
+        return ISynthetixRewards(staker).earned(address(this));
     }
 
     function balanceOfStake() public view returns (uint256) {
-        return SynthetixRewards(staker).balanceOf(address(this));
+        return ISynthetixRewards(staker).balanceOf(address(this));
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
@@ -228,7 +224,7 @@ contract Strategy is BaseStrategy {
             uint256 _debtPayment
         )
     {
-        SynthetixRewards(staker).getReward();
+        ISynthetixRewards(staker).getReward();
 
         _sell();
 
@@ -273,7 +269,9 @@ contract Strategy is BaseStrategy {
         }
 
         uint256 wantBalance = want.balanceOf(address(this));
-        SynthetixRewards(staker).stake(wantBalance);
+        //Synthetix reward contracts reject 0 value stakes
+        if(wantBalance > 0)
+            ISynthetixRewards(staker).stake(wantBalance);
     }
 
     function liquidatePosition(uint256 _amountNeeded)
@@ -290,7 +288,10 @@ contract Strategy is BaseStrategy {
                 amountToFree = deposited;
             }
             if (deposited > 0) {
-                SynthetixRewards(staker).withdraw(amountToFree);
+                //Claim rewards then withdraw
+                if(!emergencyExit)
+                    ISynthetixRewards(staker).getReward();
+                ISynthetixRewards(staker).withdraw(amountToFree);
             }
 
             _liquidatedAmount = want.balanceOf(address(this));
@@ -306,8 +307,15 @@ contract Strategy is BaseStrategy {
         _sell();
     }
 
-    function emergencyWithdrawal(uint256 _pid) external  onlyGovernance {
-        SynthetixRewards(staker).exit();
+    function toggleExit() external onlyGovernance {
+        useExitForEmergency = !useExitForEmergency;
+    }
+
+    function emergencyWithdrawal() external  onlyGovernance {
+        if(useExitForEmergency)
+            ISynthetixRewards(staker).exit();
+        else
+            ISynthetixRewards(staker).withdraw(balanceOfStake());
     }
 
     function getTokenOutPath(address _token_in,address _token_out ) internal view returns (address [] memory _path) {

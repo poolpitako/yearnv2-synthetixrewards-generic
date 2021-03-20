@@ -5,10 +5,10 @@ from brownie import Contract
 #       Show that nothing is lost!
 
 
-def test_migration(token, vault, chain, strategy, Strategy, strategist, whale, gov, bdp_masterchef, bdp, router, pid):
+def test_migration(token, vault, chain, strategy, Strategy, strategist, whale, gov, yfibank, bank, router):
     
     with brownie.reverts("Strategy already initialized"):
-        strategy.initialize(vault, strategist, strategist, strategist, bdp_masterchef, bdp, router, pid)
+        strategy.initialize(vault, strategist, strategist, strategist, yfibank, router, token, bank)
 
     # Deposit to the vault and harvest
     amount = 1 *1e18
@@ -18,7 +18,7 @@ def test_migration(token, vault, chain, strategy, Strategy, strategist, whale, g
     vault.deposit(amount, {"from": whale})
     strategy.harvest()
     
-    tx = strategy.cloneStrategy(vault, bdp_masterchef, bdp, router, pid)
+    tx = strategy.cloneStrategy(vault, yfibank, router)
     
 
     # migrate to a new strategy
@@ -37,7 +37,7 @@ def test_migration(token, vault, chain, strategy, Strategy, strategist, whale, g
     new_strategy.harvest({"from": gov})
     chain.sleep(60000)
     vault.withdraw({"from": whale})
-    assert token.balanceOf(whale) > bbefore 
+    assert token.balanceOf(whale) > bbefore
 
 
 

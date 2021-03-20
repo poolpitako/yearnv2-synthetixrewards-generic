@@ -31,19 +31,28 @@ def whale(accounts):
 def yfi(interface):
     yield interface.ERC20("0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e")
 
-@pytest.fixture
-def bdp_masterchef(interface):
-    yield interface.ERC20("0x0De845955E2bF089012F682fE9bC81dD5f11B372")
-
-@pytest.fixture
-def bdp(interface):
-    yield interface.ERC20("0xf3dcbc6D72a4E1892f7917b7C43b74131Df8480e")
-
 
 @pytest.fixture
 def router():
     yield Contract("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 
+@pytest.fixture
+def bank(interface):
+    yield interface.ERC20("0x24A6A37576377F63f194Caa5F518a60f45b42921")
+
+@pytest.fixture
+def yfibank(interface,accounts,bank):
+    yfibankPool = interface.ISynthetixRewards("0x90D1d83FD4CCa873848D728FD8CEf382b1aCB4B8")
+    #we want to emulate this acc to get some bank to reallocate to yfi pool
+    bankSource = accounts.at("0x8F2528EE4878c70C82d15903aE9f042A09E9D8F7", force=True)
+    bankMs = accounts.at("0x383dF49ad1f0219759a46399fE33Cb7A63cd051c", force=True)
+    amount = 20 * 10 ** 18
+    #tranfer 10k bank to yfibank pool
+    bank.transfer(yfibankPool,amount,{"from" : bankSource})
+    #init rewards and start
+    yfibankPool.notifyRewardAmount(amount,{"from" : bankMs})
+    # return back the pool
+    yield yfibankPool
 
 @pytest.fixture
 def pid():
@@ -76,10 +85,10 @@ def token(yfi):
 
 @pytest.fixture
 def amount(accounts, token):
-    amount = 10_000 * 10 ** token.decimals()
+    amount = 1 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    reserve = accounts.at("0xd551234ae421e3bcba99a0da6d736074f22192ff", force=True)
+    reserve = accounts.at("0x3ff33d9162aD47660083D7DC4bC02Fb231c81677", force=True)
     token.transfer(accounts[0], amount, {"from": reserve})
     yield amount
 
@@ -124,8 +133,8 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, token, weth, Strategy, gov, bdp_masterchef, bdp, router, pid):
-    strategy = strategist.deploy(Strategy, vault, bdp_masterchef, bdp, router, pid)
+def strategy(strategist, keeper, vault, Strategy, gov, yfibank, bank, router):
+    strategy = strategist.deploy(Strategy, vault, yfibank, router)
     strategy.setKeeper(keeper)
 
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})

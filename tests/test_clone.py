@@ -13,10 +13,10 @@ def test_clone(
     strategy,
     Strategy,
     vault,
-    bdp_masterchef,
-    bdp,
+    token,
+    yfibank,
+    bank,
     router,
-    pid
 ):
     # Shouldn't be able to call initialize again
     with brownie.reverts():
@@ -25,23 +25,23 @@ def test_clone(
             strategist,
             rewards,
             keeper,
-            bdp_masterchef,
-            bdp,
+            yfibank,
             router,
-            pid,
+            token,
+            bank,
             {"from": gov},
         )
 
     # Clone the strategy
-    tx = strategy.cloneMasterchef(
+    tx = strategy.cloneStrategy(
         vault,
         strategist,
         rewards,
         keeper,
-        bdp_masterchef,
-        bdp,
+        yfibank,
         router,
-        pid,
+        token,
+        bank,
         {"from": gov},
     )
     new_strategy = Strategy.at(tx.return_value)
@@ -53,10 +53,10 @@ def test_clone(
             strategist,
             rewards,
             keeper,
-            bdp_masterchef,
-            bdp,
+            yfibank,
             router,
-            pid,
+            token,
+            bank,
             {"from": gov},
         )
 

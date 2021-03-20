@@ -81,7 +81,7 @@ def test_emergency_withdraw(accounts, token, vault, strategy, strategist, whale,
     # harvest deposit into staking contract
     strategy.harvest()
     assert token.balanceOf(strategy) == 0
-    strategy.emergencyWithdrawal(pid, {'from': accounts[0]})
+    strategy.emergencyWithdrawal({'from': accounts[0]})
     assert token.balanceOf(strategy) >= amount
 
 def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
@@ -89,7 +89,9 @@ def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
     token.approve(vault.address, amount, {"from": accounts[0]})
     vault.deposit(amount, {"from": accounts[0]})
     strategy.harvest()
-    assert token.balanceOf(strategy.address) == amount
+
+    #harvest should have transfered tokens to strat and staked it
+    assert token.balanceOf(strategy.address) == 0
 
     # set emergency and exit
     strategy.setEmergencyExit()
@@ -105,8 +107,8 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
 
     # harvest
     strategy.harvest()
-    assert token.balanceOf(strategy.address) == amount
-
+    #harvest should have transfered tokens to strat and staked it
+    assert token.balanceOf(strategy.address) == 0
     # You should test that the harvest method is capable of making a profit.
     # TODO: uncomment the following lines.
     # strategy.harvest()
@@ -121,11 +123,11 @@ def test_change_debt(gov, token, vault, strategy, strategist, amount):
     vault.updateStrategyDebtRatio(strategy.address, 5_000, {"from": gov})
     strategy.harvest()
 
-    assert token.balanceOf(strategy.address) == amount / 2
+    assert token.balanceOf(vault.address) == amount / 2
 
     vault.updateStrategyDebtRatio(strategy.address, 10_000, {"from": gov})
     strategy.harvest()
-    assert token.balanceOf(strategy.address) == amount
+    assert strategy.balanceOfStake() >= amount
 
     # In order to pass this tests, you will need to implement prepareReturn.
     # TODO: uncomment the following lines.

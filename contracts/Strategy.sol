@@ -291,7 +291,8 @@ contract Strategy is BaseStrategy {
                 //Claim rewards then withdraw
                 if(!emergencyExit)
                     ISynthetixRewards(staker).getReward();
-                ISynthetixRewards(staker).withdraw(amountToFree);
+                if(amountToFree > 0)
+                    ISynthetixRewards(staker).withdraw(amountToFree);
             }
 
             _liquidatedAmount = want.balanceOf(address(this));
@@ -321,9 +322,10 @@ contract Strategy is BaseStrategy {
     }
 
     function emergencyWithdrawal() external  onlyGuardians {
+        uint256 balStake = balanceOfStake();
         if(useExitForEmergency)
             ISynthetixRewards(staker).exit();
-        else
+         if (balStake > 0)
             ISynthetixRewards(staker).withdraw(balanceOfStake());
     }
 

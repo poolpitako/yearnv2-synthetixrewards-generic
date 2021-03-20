@@ -82,7 +82,7 @@ contract Strategy is BaseStrategy {
     ) internal {
         require(
             router == address(0),
-            "Masterchef Strategy already initialized"
+            "Synthetix Strategy already initialized"
         );
         require(
             _router == uniswapRouter || _router == sushiswapRouter,
@@ -325,8 +325,8 @@ contract Strategy is BaseStrategy {
         uint256 balStake = balanceOfStake();
         if(useExitForEmergency)
             ISynthetixRewards(staker).exit();
-         if (balStake > 0)
-            ISynthetixRewards(staker).withdraw(balanceOfStake());
+        else if (balStake > 0)
+            ISynthetixRewards(staker).withdraw(balStake);
     }
 
     function getTokenOutPath(address _token_in,address _token_out ) internal view returns (address [] memory _path) {

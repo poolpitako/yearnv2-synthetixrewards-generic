@@ -9,24 +9,23 @@ Vault = project.load(
     Path.home() / ".brownie" / "packages" / config["dependencies"][0]
 ).Vault
 
+YFIStaker = "0x90D1d83FD4CCa873848D728FD8CEf382b1aCB4B8"
+SushiRouter = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
 
-def get_address(msg: str, default: str = None) -> str:
-    val = click.prompt(msg, default=default)
+YFIToken = "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e"
+BankToken = "0x24A6A37576377F63f194Caa5F518a60f45b42921"
 
-    # Keep asking user for click.prompt until it passes
+def get_address(msg: str) -> str:
     while True:
-
+        val = input(msg)
         if is_checksum_address(val):
             return val
-        elif addr := web3.ens.address(val):
-            click.echo(f"Found ENS '{val}' [{addr}]")
-            return addr
-
-        click.echo(
-            f"I'm sorry, but '{val}' is not a checksummed address or valid ENS record"
-        )
-        # NOTE: Only display default once
-        val = click.prompt(msg)
+        else:
+            addr = web3.ens.address(val)
+            if addr:
+                print(f"Found ENS '{val}' [{addr}]")
+                return addr
+        print(f"I'm sorry, but '{val}' is not a checksummed address or ENS")
 
 
 def main():
@@ -55,4 +54,4 @@ def main():
     if input("Deploy Strategy? y/[N]: ").lower() != "y":
         return
 
-    strategy = Strategy.deploy(vault, {"from": dev}, publish_source=publish_source)
+    strategy = Strategy.deploy(vault, YFIStaker, SushiRouter, YFIToken, BankToken, {"from": dev}, publish_source=publish_source)

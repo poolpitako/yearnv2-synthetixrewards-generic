@@ -50,7 +50,8 @@ contract Strategy is BaseStrategy {
         address _staker,
         address _router
     ) public BaseStrategy(_vault) {
-        _initializeStrat(_staker, _router);
+        //By default get data from the staker
+        _initializeStrat(_staker, _router,address(0),address(0));
     }
 
     function initialize(
@@ -59,16 +60,20 @@ contract Strategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _staker,
-        address _router
+        address _router,
+        address _want,
+        address _reward
     ) external {
         //note: initialise can only be called once. in _initialize in BaseStrategy we have: require(address(want) == address(0), "Strategy already initialized");
         _initialize(_vault, _strategist, _rewards, _keeper);
-        _initializeStrat(_staker, _router);
+        _initializeStrat(_staker, _router, _want, _reward);
     }
 
     function _initializeStrat(
         address _staker,
-        address _router
+        address _router,
+        address _want,
+        address _reward
     ) internal {
         require(
             router == address(0),
@@ -84,14 +89,14 @@ contract Strategy is BaseStrategy {
         profitFactor = 1500;
         debtThreshold = 1_000_000 * 1e18;
         staker = _staker;
-        reward = SynthetixRewards(staker).rewardToken();
+        reward = _reward == address(0) ? SynthetixRewards(staker).rewardToken() : _reward;
         router = _router;
 
-        require(address(want) == SynthetixRewards(staker).stakeToken(), "wrong want");
+        require(address(want) == (_want == address(0) ? SynthetixRewards(staker).stakeToken() : _want) , "wrong want");
 
         want.safeApprove(_staker, uint256(-1));
         IERC20(reward).safeApprove(router, uint256(-1));
-        path = getTokenOutPath(reward, want);
+        path = getTokenOutPath(reward, address(want));
     }
 
     function cloneStrategy(
@@ -105,7 +110,28 @@ contract Strategy is BaseStrategy {
             msg.sender,
             msg.sender,
             _staker,
-            _router
+            _router,
+            address(0),
+            address(0)
+        );
+    }
+
+    function cloneStrategy(
+        address _vault,
+        address _staker,
+        address _router,
+        address _want,
+        address _reward
+    ) external returns (address newStrategy) {
+        newStrategy = this.cloneStrategy(
+            _vault,
+            msg.sender,
+            msg.sender,
+            msg.sender,
+            _staker,
+            _router,
+            _want,
+            _reward
         );
     }
 
@@ -115,7 +141,9 @@ contract Strategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _staker,
-        address _router
+        address _router,
+        address _want,
+        address _reward
     ) external returns (address newStrategy) {
         // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
         bytes20 addressBytes = bytes20(address(this));
@@ -141,7 +169,9 @@ contract Strategy is BaseStrategy {
             _rewards,
             _keeper,
             _staker,
-            _router
+            _router,
+            _want,
+            _reward
         );
 
         emit Cloned(newStrategy);
@@ -299,7 +329,7 @@ contract Strategy is BaseStrategy {
             return;
         }
         if(path.length == 0){
-            IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), getTokenOutPath(reward,want), address(this), now);
+            IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), getTokenOutPath(reward,address(want)), address(this), now);
         }else{
             IUniswapV2Router02(router).swapExactTokensForTokens(rewardBal, uint256(0), path, address(this), now);
         }

@@ -41,7 +41,8 @@ contract Strategy is BaseStrategy {
         address _iceRewards,
         uint256 _pid
     ) external {
-        //note: initialise can only be called once. in _initialize in BaseStrategy we have: require(address(want) == address(0), "Strategy already initialized");
+        //note: initialise can only be called once. in _initialize in BaseStrategy
+        // we have: require(address(want) == address(0), "Strategy already initialized");
         _initialize(_vault, _strategist, _rewards, _keeper);
         _initializeStrat(_iceRewards, _pid);
     }
@@ -107,12 +108,16 @@ contract Strategy is BaseStrategy {
         return IIceRewards(iceRewards).pendingIce(pid, address(this));
     }
 
+    function balanceOfWant() public view returns (uint256) {
+        return want.balanceOf(address(this));
+    }
+
     function balanceOfStake() public view returns (uint256) {
         return IIceRewards(iceRewards).userInfo(pid, address(this)).amount;
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return want.balanceOf(address(this)).add(balanceOfStake());
+        return balanceOfWant().add(balanceOfStake());
     }
 
     function prepareReturn(uint256 _debtOutstanding)
@@ -128,7 +133,7 @@ contract Strategy is BaseStrategy {
         IIceRewards(iceRewards).withdraw(0, 0);
 
         uint256 assets = estimatedTotalAssets();
-        uint256 wantBal = want.balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
         uint256 debt = vault.strategies(address(this)).totalDebt;
 
@@ -141,7 +146,7 @@ contract Strategy is BaseStrategy {
             if (amountToFree > 0 && wantBal < amountToFree) {
                 liquidatePosition(amountToFree);
 
-                uint256 newLoose = want.balanceOf(address(this));
+                uint256 newLoose = balanceOfWant();
 
                 //if we dont have enough money adjust _debtOutstanding and only change profit if needed
                 if (newLoose < amountToFree) {
@@ -167,7 +172,7 @@ contract Strategy is BaseStrategy {
             return;
         }
 
-        uint256 wantBalance = want.balanceOf(address(this));
+        uint256 wantBalance = balanceOfWant();
         if (wantBalance > 0) {
             IIceRewards(iceRewards).deposit(pid, wantBalance);
         }
@@ -178,7 +183,7 @@ contract Strategy is BaseStrategy {
         override
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
-        uint256 totalAssets = want.balanceOf(address(this));
+        uint256 totalAssets = balanceOfWant();
         if (_amountNeeded > totalAssets) {
             uint256 amountToFree = _amountNeeded.sub(totalAssets);
 
@@ -192,7 +197,7 @@ contract Strategy is BaseStrategy {
                 }
             }
 
-            _liquidatedAmount = want.balanceOf(address(this));
+            _liquidatedAmount = balanceOfWant();
         } else {
             _liquidatedAmount = _amountNeeded;
         }

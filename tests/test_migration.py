@@ -15,14 +15,14 @@ def test_migration(
     strategist,
     whale,
     gov,
-    yfibank,
-    bank,
-    router,
+    ice_rewards,
+    ice,
+    pid,
 ):
 
     with brownie.reverts("Strategy already initialized"):
         strategy.initialize(
-            vault, strategist, strategist, strategist, yfibank, router, token, bank
+            vault, strategist, strategist, strategist, ice_rewards, pid
         )
 
     # Deposit to the vault and harvest
@@ -33,7 +33,7 @@ def test_migration(
     vault.deposit(amount, {"from": whale})
     strategy.harvest()
 
-    tx = strategy.cloneStrategy(vault, yfibank, router, token, bank)
+    tx = strategy.cloneStrategy(vault, strategist, strategist, strategist, ice_rewards, pid)
 
     # migrate to a new strategy
     new_strategy = Strategy.at(tx.return_value)

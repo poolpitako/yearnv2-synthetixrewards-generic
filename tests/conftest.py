@@ -53,8 +53,8 @@ def token(ice):
 
 
 @pytest.fixture
-def ice_rewards():
-    yield Contract("0x05200cb2cee4b6144b2b2984e246b52bb1afcbd0")
+def ice_rewards(interface):
+    yield interface.IIceRewards("0x05200cb2cee4b6144b2b2984e246b52bb1afcbd0")
 
 
 @pytest.fixture

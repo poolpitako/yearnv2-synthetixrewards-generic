@@ -1,10 +1,6 @@
 import brownie
 from brownie import Contract
 
-# TODO: Add tests that show proper migration of the strategy to a newer one
-#       Use another copy of the strategy to simulate the migration
-#       Show that nothing is lost!
-
 
 def test_migration(
     token,
@@ -21,19 +17,19 @@ def test_migration(
 ):
 
     with brownie.reverts("Strategy already initialized"):
-        strategy.initialize(
-            vault, strategist, strategist, strategist, ice_rewards, pid
-        )
+        strategy.initialize(vault, strategist, strategist, strategist, ice_rewards, pid)
 
     # Deposit to the vault and harvest
     amount = 1 * 1e18
-    bbefore = token.balanceOf(whale)
+    balance_before = token.balanceOf(whale)
 
-    token.approve(vault.address, amount, {"from": whale})
+    token.approve(vault, amount, {"from": whale})
     vault.deposit(amount, {"from": whale})
     strategy.harvest()
 
-    tx = strategy.cloneStrategy(vault, strategist, strategist, strategist, ice_rewards, pid)
+    tx = strategy.cloneStrategy(
+        vault, strategist, strategist, strategist, ice_rewards, pid
+    )
 
     # migrate to a new strategy
     new_strategy = Strategy.at(tx.return_value)
@@ -43,10 +39,13 @@ def test_migration(
     assert strategy.estimatedTotalAssets() == 0
 
     new_strategy.harvest({"from": gov})
+    chain.sleep(3600 * 8)
+    chain.mine(1)
 
-    chain.mine(20)
-    chain.sleep(2000)
     new_strategy.harvest({"from": gov})
-    chain.sleep(60000)
+    chain.sleep(3600 * 8)
+    chain.mine(1)
+
     vault.withdraw({"from": whale})
-    assert token.balanceOf(whale) > bbefore
+
+    assert token.balanceOf(whale) > balance_before

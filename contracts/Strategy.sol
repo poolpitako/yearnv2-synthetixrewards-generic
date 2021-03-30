@@ -130,7 +130,7 @@ contract Strategy is BaseStrategy {
         )
     {
         // Claim profit
-        IIceRewards(iceRewards).withdraw(0, 0);
+        IIceRewards(iceRewards).withdraw(pid, 0);
 
         uint256 assets = estimatedTotalAssets();
         uint256 wantBal = balanceOfWant();
@@ -186,25 +186,30 @@ contract Strategy is BaseStrategy {
         uint256 totalAssets = balanceOfWant();
         if (_amountNeeded > totalAssets) {
             uint256 amountToFree = _amountNeeded.sub(totalAssets);
-
             uint256 deposited = balanceOfStake();
+
+            // amountToFree can only go up to deposited amount
             if (deposited < amountToFree) {
                 amountToFree = deposited;
             }
-            if (deposited > 0) {
-                if (amountToFree > 0) {
-                    IIceRewards(iceRewards).withdraw(0, amountToFree);
-                }
-            }
 
-            _liquidatedAmount = balanceOfWant();
-        } else {
+            if (deposited > 0 && amountToFree > 0) {
+                IIceRewards(iceRewards).withdraw(pid, amountToFree);
+            }
+        }
+
+        uint256 balanceOfWant = balanceOfWant();
+        if (balanceOfWant >= _amountNeeded) {
             _liquidatedAmount = _amountNeeded;
+        } else {
+            _liquidatedAmount = balanceOfWant;
+            _loss = _amountNeeded.sub(balanceOfWant);
         }
     }
 
     function prepareMigration(address _newStrategy) internal override {
-        liquidatePosition(uint256(-1)); //withdraw all. does not matter if we ask for too much
+        //withdraw all. does not matter if we ask for too much
+        liquidatePosition(type(uint256).max);
     }
 
     function protectedTokens()

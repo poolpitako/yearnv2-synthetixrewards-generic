@@ -3,7 +3,6 @@ import brownie
 from brownie import Wei, accounts, Contract, config
 
 
-@pytest.mark.require_network("mainnet-fork")
 def test_clone(
     chain,
     gov,
@@ -21,13 +20,7 @@ def test_clone(
     # Shouldn't be able to call initialize again
     with brownie.reverts():
         strategy.initialize(
-            vault,
-            strategist,
-            rewards,
-            keeper,
-            ice_rewards,
-            pid,
-            {"from": gov},
+            vault, strategist, rewards, keeper, ice_rewards, pid, {"from": gov},
         )
 
     # Clone the strategy
@@ -39,13 +32,7 @@ def test_clone(
     # Shouldn't be able to call initialize again
     with brownie.reverts():
         new_strategy.initialize(
-            vault,
-            strategist,
-            rewards,
-            keeper,
-            ice_rewards,
-            pid,
-            {"from": gov},
+            vault, strategist, rewards, keeper, ice_rewards, pid, {"from": gov},
         )
 
     # TODO: do a migrate and test a harvest

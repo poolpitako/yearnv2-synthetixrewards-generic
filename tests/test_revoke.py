@@ -7,4 +7,4 @@ def test_revoke_strategy_from_vault(token, vault, strategy, amount, gov, whale):
 
     vault.revokeStrategy(strategy, {"from": gov})
     strategy.harvest()
-    assert token.balanceOf(vault) == amount
+    assert token.balanceOf(vault) >= amount

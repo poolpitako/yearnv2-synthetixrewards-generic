@@ -9,6 +9,12 @@ struct UserInfo {
 }
 
 interface IIceRewards {
+    struct UserInfo {
+        uint256 amount; // How many LP tokens the user has provided.
+        uint256 rewardDebt; // Reward debt. See explanation below.
+        uint256 remainingIceTokenReward; // ICE Tokens that weren't distributed for user per pool.
+    }
+
     function withdraw(uint256 _pid, uint256 _amount) external;
 
     function deposit(uint256 _pid, uint256 _amount) external;
@@ -17,5 +23,9 @@ interface IIceRewards {
         external
         view
         returns (uint256);
-    //function userInfo(uint256 _pid) external returns (mapping(address => UserInfo) memory);
+
+    function userInfo(uint256 _pid, address _user)
+        external
+        view
+        returns (UserInfo memory);
 }

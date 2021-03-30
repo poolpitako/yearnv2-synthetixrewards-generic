@@ -108,8 +108,7 @@ contract Strategy is BaseStrategy {
     }
 
     function balanceOfStake() public view returns (uint256) {
-        //return IIceRewards(iceRewards).userInfo(pid)(address(this)).amount;
-        return 0;
+        return IIceRewards(iceRewards).userInfo(pid, address(this)).amount;
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {

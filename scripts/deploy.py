@@ -15,6 +15,7 @@ SushiRouter = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
 YFIToken = "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e"
 BankToken = "0x24A6A37576377F63f194Caa5F518a60f45b42921"
 
+
 def get_address(msg: str) -> str:
     while True:
         val = input(msg)
@@ -54,4 +55,12 @@ def main():
     if input("Deploy Strategy? y/[N]: ").lower() != "y":
         return
 
-    strategy = Strategy.deploy(vault, YFIStaker, SushiRouter, YFIToken, BankToken, {"from": dev}, publish_source=publish_source)
+    strategy = Strategy.deploy(
+        vault,
+        YFIStaker,
+        SushiRouter,
+        YFIToken,
+        BankToken,
+        {"from": dev},
+        publish_source=publish_source,
+    )

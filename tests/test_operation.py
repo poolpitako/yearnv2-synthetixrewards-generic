@@ -7,11 +7,11 @@ import random
 def test_apr(accounts, token, vault, strategy, chain, strategist, whale):
     strategist = accounts[0]
 
-    amount = 1*1e18
+    amount = 1 * 1e18
     # Deposit to the vault
     token.approve(vault, amount, {"from": whale})
     vault.deposit(amount, {"from": whale})
-    assert token.balanceOf(vault.address) == amount
+    assert token.balanceOf(vault) == amount
 
     # harvest
     strategy.harvest()
@@ -45,10 +45,11 @@ def test_apr(accounts, token, vault, strategy, chain, strategist, whale):
         # print(apr)
         print(f"implied apr: {apr:.8%}")
 
+
 def test_normal_activity(accounts, token, vault, strategy, strategist, whale, chain):
 
-    amount = 1*1e18
-    bbefore= token.balanceOf(whale)
+    amount = 1 * 1e18
+    bbefore = token.balanceOf(whale)
 
     # Deposit to the vault
     token.approve(vault, amount, {"from": whale})
@@ -68,10 +69,13 @@ def test_normal_activity(accounts, token, vault, strategy, strategist, whale, ch
     genericStateOfStrat(strategy, token, vault)
     genericStateOfVault(vault, token)
 
-def test_emergency_withdraw(accounts, token, vault, strategy, strategist, whale, chain, pid):
 
-    amount = 1*1e18
-    bbefore= token.balanceOf(whale)
+def test_emergency_withdraw(
+    accounts, token, vault, strategy, strategist, whale, chain, pid
+):
+
+    amount = 1 * 1e18
+    bbefore = token.balanceOf(whale)
 
     # Deposit to the vault
     token.approve(vault, amount, {"from": whale})
@@ -81,8 +85,9 @@ def test_emergency_withdraw(accounts, token, vault, strategy, strategist, whale,
     # harvest deposit into staking contract
     strategy.harvest()
     assert token.balanceOf(strategy) == 0
-    strategy.emergencyWithdrawal({'from': accounts[0]})
+    strategy.emergencyWithdrawal({"from": accounts[0]})
     assert token.balanceOf(strategy) >= amount
+
 
 def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
     # Deposit to the vault
@@ -90,7 +95,7 @@ def test_emergency_exit(accounts, token, vault, strategy, strategist, amount):
     vault.deposit(amount, {"from": accounts[0]})
     strategy.harvest()
 
-    #harvest should have transfered tokens to strat and staked it
+    # harvest should have transfered tokens to strat and staked it
     assert token.balanceOf(strategy.address) == 0
 
     # set emergency and exit
@@ -107,7 +112,7 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
 
     # harvest
     strategy.harvest()
-    #harvest should have transfered tokens to strat and staked it
+    # harvest should have transfered tokens to strat and staked it
     assert token.balanceOf(strategy.address) == 0
     # You should test that the harvest method is capable of making a profit.
     # TODO: uncomment the following lines.
@@ -168,4 +173,3 @@ def test_triggers(gov, vault, strategy, token, amount, weth, weth_amout):
 
     strategy.harvestTrigger(0)
     strategy.tendTrigger(0)
-

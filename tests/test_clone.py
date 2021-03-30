@@ -34,15 +34,7 @@ def test_clone(
 
     # Clone the strategy
     tx = strategy.cloneStrategy(
-        vault,
-        strategist,
-        rewards,
-        keeper,
-        yfibank,
-        router,
-        token,
-        bank,
-        {"from": gov},
+        vault, strategist, rewards, keeper, yfibank, router, token, bank, {"from": gov},
     )
     new_strategy = Strategy.at(tx.return_value)
 
@@ -59,6 +51,5 @@ def test_clone(
             bank,
             {"from": gov},
         )
-
 
     # TODO: do a migrate and test a harvest

@@ -23,6 +23,21 @@ def ice(interface):
 
 
 @pytest.fixture
+def boo(interface):
+    yield interface.ERC20("0x841fad6eae12c286d1fd18d1d525dffa75c7effe")
+
+
+@pytest.fixture
+def boo_whale(accounts):
+    yield accounts.at("0x95478c4f7d22d1048f46100001c2c69d2ba57380", force=True)
+
+
+@pytest.fixture
+def boo_pid():
+    yield 0
+
+
+@pytest.fixture
 def pid():
     yield 0
 
@@ -58,8 +73,32 @@ def ice_rewards(interface):
 
 
 @pytest.fixture
+def boo_rewards(interface):
+    yield interface.IBooRewards("0xACACa07e398d4946AD12232F40f255230e73Ca72")
+
+
+@pytest.fixture
 def amount():
     yield Wei("1000 ether")
+
+
+@pytest.fixture
+def boo_vault(pm, gov, rewards, guardian, management, boo):
+    Vault = pm(config["dependencies"][0]).Vault
+    vault = guardian.deploy(Vault)
+    vault.initialize(boo, gov, rewards, "", "", guardian)
+    vault.setDepositLimit(2 ** 256 - 1, {"from": gov})
+    vault.setManagement(management, {"from": gov})
+    yield vault
+
+
+@pytest.fixture
+def boo_strategy(
+    strategist, boo_vault, BooStakingStrategy, boo, gov, boo_rewards, boo_pid
+):
+    strategy = strategist.deploy(BooStakingStrategy, boo_vault, boo_rewards, boo_pid)
+    boo_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
+    yield strategy
 
 
 @pytest.fixture
